@@ -1,5 +1,6 @@
 const { Appointment, Patient } = require('../models')
 const { validationResult } = require('express-validator')
+const { groupBy, reduce, orderBy } = require('lodash')
 
 function AppointmentController() {}
 
@@ -111,19 +112,32 @@ const remove = function (req, res) {
 }
 
 const all = function (req, res) {
-  Appointment.find({}, (err, docs) => {
-    if (err) {
-      return res.status(500).json({
-        succes: false,
-        message: err,
-      })
-    }
+  Appointment.find({})
+    .populate('patient')
+    .exec((err, docs) => {
+      if (err) {
+        return res.status(500).json({
+          succes: false,
+          message: err,
+        })
+      }
 
-    res.json({
-      succes: true,
-      data: docs,
+      res.json({
+        succes: true,
+        data: orderBy(
+          reduce(
+            groupBy(docs, 'date'),
+            (result, obj, key) => {
+              result = [...result, { title: key, data: obj }]
+              return result
+            },
+            []
+          ),
+          ['title'],
+          ['desc']
+        ),
+      })
     })
-  }).populate('patient')
 }
 
 AppointmentController.prototype = {
